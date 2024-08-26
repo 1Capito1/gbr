@@ -7,6 +7,33 @@ pub struct Registers {
     f: u8,
     h: u8,
     l: u8,
+    flags: Flags
+}
+
+/// Lower half of the AF Register
+pub struct Flags {
+    /// Bit 7: Zero flag: This bit is set only if the
+    /// result of an operation is zero.
+    /// Used by conditional jumps
+    z: u8,
+    
+    /// Bit 6: Subtraction Flag(BCD): Used by DAA instruction only
+    /// indicates whether the previous instruction had been a subtraction
+    n: u8,
+
+    /// Bit 5: Half Carry flag(BCD): Used by DAA instruction only
+    /// indicates carry for the lower 4 bits of the result
+    h: u8,
+
+    /// Bit 4: Carry flag:
+    /// Flag is set when:
+    ///     The result of 8-bit addition is higher than 0xFF
+    ///     The result of 16-bit addition is higher than 0xFFFF
+    ///     The result of a subtration or comparison is less than 0
+    ///     When a shift/rotate operation shifts out a 1 bit
+    /// 
+    /// Used by conditional jumps and instructions such as ADC, SBC, RL, RLA, etc.
+    c: u8
 }
 
 impl Registers {
