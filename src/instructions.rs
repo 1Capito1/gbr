@@ -29,6 +29,9 @@ fn ld_to_memory(register: &mut u8, address: usize, cpu: &mut CPU) {
     cpu.work_ram[address] = *register;
 }
 
+fn inc(register: &mut u8) { *register += 1; }
+fn dec(register: &mut u8) { *register -= 1;}
+
 /// push 16-bit register onto stack
 fn push(register: &mut u16, cpu: &mut CPU) {
     let most_significant = ((*register >> 8) & 0xFF) as u8;
@@ -95,3 +98,78 @@ fn addc_from_memory(register: &mut u8, address: usize, cpu: &mut CPU) {
     cpu.registers.flags.h = ((*register & 0xF) + (cpu.work_ram[address] & 0xF)) > 0xF;
     cpu.registers.flags.c = overflow;
 }
+
+/// sub the value of register in to register A without carry
+fn sub(register: &mut u8, cpu: &mut CPU) {
+    let (res, _) = register.overflowing_sub(cpu.registers.a);
+    cpu.registers.a = res;
+
+    cpu.registers.flags.z = *register == 0;
+    cpu.registers.flags.n = true;
+    cpu.registers.flags.h = (*register & 0xF) < (cpu.registers.a & 0xF)
+}
+
+/// [sub] with carry
+fn sbc(register: &mut u8, cpu: &mut CPU) {
+    let carry = if cpu.registers.flags.c { 1 } else { 0 };
+    let (res, borrow) = register.overflowing_sub(cpu.registers.a);
+    let (res, borrow2) = res.overflowing_sub(carry);
+
+    cpu.registers.flags.z = res == 0;
+    cpu.registers.flags.n = true;
+    cpu.registers.flags.h = (cpu.registers.a & 0xF) < (*register & 0xF) || ((res & 0xF) + carry) > (cpu.registers.a & 0xF);
+    cpu.registers.flags.c = borrow || borrow2;
+    cpu.registers.a = res;
+}
+
+/// logical AND with register into register A
+fn and(register: u8, cpu: &mut CPU) {
+    cpu.registers.a &= register;
+}
+/// logical OR with register into register A
+fn or(register: u8, cpu: &mut CPU) {
+    cpu.registers.a |= register;
+}
+/// logical XOR with A into A
+fn xor(register: u8, cpu: &mut CPU) {
+    cpu.registers.a ^= register;
+}
+/// compare, compares register with A.
+/// Effectively a [sub] with the while ignoring the result
+fn cp(register: u8, cpu: &mut CPU) {
+    let (_, carry) = register.overflowing_sub(cpu.registers.a);
+    cpu.registers.flags.z = register == 0;
+    cpu.registers.flags.n = true;
+    cpu.registers.flags.h = (register & 0xF) < (cpu.registers.a & 0xF);
+    cpu.registers.flags.c = carry;
+}
+
+/// Jumps to address in register, may panic if attempting to access out of bounds memory
+fn jp(register: u16, cpu: &mut CPU) {
+    if register as usize >= cpu.work_ram.len() {
+        panic!("out of bounds jump: attemped to jump to {}", register);
+    }
+    cpu.program_counter = register as usize;
+}
+
+/// Jumps to address in 8-bit register relative to program counter
+fn jr(register: u8, cpu: &mut CPU) {
+    let offset = register as usize;
+    let target_address = cpu.program_counter.wrapping_add(offset);
+
+    if target_address >= cpu.work_ram.len() {
+        panic!("Out of bounds jump: attempted to jump to address 0x{:04X}", target_address);
+    }
+    cpu.program_counter = target_address;
+}
+
+/// TODO: Finish this
+fn call(address: u16, cpu: &mut CPU) {
+    cpu.stack_ptr -= 1;
+    cpu.work_ram[cpu.stack_ptr] = cpu.program_counter as u8;
+    if address as usize >= cpu.work_ram.len() {
+        panic!("Out of bounds jump: attempted to jump to address 0x{:04X}", address);
+    }
+    cpu.program_counter = address as usize;
+}
+

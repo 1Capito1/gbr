@@ -13,5 +13,6 @@ pub struct CPU {
    pub video_ram: RAMArea,
    pub display: display::Display,
    pub stack_ptr: usize,
+   pub program_counter: usize,
    pub registers: registers::Registers,
 }
