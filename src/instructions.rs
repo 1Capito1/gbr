@@ -14,11 +14,11 @@ pub fn ld16(register: &mut u16, value: u16) {
 
 /// loads the value in work ram[address] into register.
 /// invalid memory accesses will cause a panic
-pub fn ld_from_memory(register: &mut u8, address: usize, cpu: &mut CPU) {
-    if address >= cpu.work_ram.len() { 
-        panic!("Address {:#x} outside of valid memory range. Max range {:#x}", address, cpu.work_ram.len()); 
+pub fn ld_from_memory(register: &mut u8, address: usize, ram: [u8; 8192]) {
+    if address >= ram.len() { 
+        panic!("Address {:#x} outside of valid memory range. Max range {:#x}", address, ram.len()); 
     }
-    *register = cpu.work_ram[address];
+    *register = ram[address];
 }
 
 /// loads the value of register into work ram[address]
@@ -31,7 +31,8 @@ pub fn ld_to_memory(register: u8, address: usize, cpu: &mut CPU) {
 
 pub fn inc8(register: &mut u8) { *register += 1; }
 pub fn inc16(register: &mut u16) { *register += 1; }
-pub fn dec(register: &mut u8) { *register -= 1;}
+pub fn dec8(register: &mut u8) { *register -= 1;}
+pub fn dec16(register: &mut u16) { *register -= 1; }
 
 /// push 16-bit register onto stack
 pub fn push(register: &mut u16, cpu: &mut CPU) {
@@ -54,7 +55,15 @@ pub fn pop(register: &mut u16, cpu: &mut CPU) {
 
 /// add value of register B into register A
 /// register B could also be an immediate value
-pub fn add(register_a: &mut u8, register_b: u8, cpu: &mut CPU) {
+pub fn add8(register_a: &mut u8, register_b: u8, cpu: &mut CPU) {
+    let (res, _) = register_a.overflowing_add(register_b);
+    *register_a = res;
+
+    cpu.registers.flags.z = *register_a == 0;
+    cpu.registers.flags.n = false;
+    cpu.registers.flags.h = ((*register_a & 0xF) + (register_b & 0xF)) > 0xF;
+}
+pub fn add16(register_a: &mut u16, register_b: u16, cpu: &mut CPU) {
     let (res, _) = register_a.overflowing_add(register_b);
     *register_a = res;
 
@@ -154,8 +163,7 @@ pub fn jp(register: u16, cpu: &mut CPU) {
 }
 
 /// Jumps to address in 8-bit register relative to program counter
-pub fn jr(register: u8, cpu: &mut CPU) {
-    let offset = register as usize;
+pub fn jr(offset: usize, cpu: &mut CPU) {
     let target_address = cpu.program_counter.wrapping_add(offset);
 
     if target_address >= cpu.work_ram.len() {
@@ -210,4 +218,40 @@ pub fn rlca(cpu: &mut CPU) {
     cpu.registers.flags.n = false;
     cpu.registers.flags.h = false;
     cpu.registers.flags.c = carry;
+}
+/// ex A = b1011010 and carry = 1
+/// = b10110101
+/// = b0110101 and c = 1
+pub fn rla(cpu: &mut CPU) {
+    let carry_after_rotate = (cpu.registers.a & 0x80) != 0;
+    
+    cpu.registers.a = (cpu.registers.a << 1) | (cpu.registers.flags.c as u8);
+
+    cpu.registers.a &= cpu.registers.c;
+    cpu.registers.flags.c = carry_after_rotate;
+
+    cpu.registers.flags.z = cpu.registers.a == 0;
+    cpu.registers.flags.n = false;
+    cpu.registers.flags.h = false;
+}
+/// rotate contents of register a to the right, with the circular bit
+/// going into carry flag
+pub fn rrca(cpu: &mut CPU) {
+    let carry = cpu.registers.a & 0x01;
+    cpu.registers.a = (cpu.registers.a >> 1) | (cpu.registers.a << 7) & 0xFF;
+    cpu.registers.flags.c = carry == 1;
+
+    cpu.registers.flags.z = false;
+    cpu.registers.flags.n = false;
+    cpu.registers.flags.h = false;
+}
+pub fn rra(cpu: &mut CPU) {
+    let carry_after_rotate = (cpu.registers.a & 0x01) != 0;
+    
+    cpu.registers.a = (cpu.registers.a >> 1) | (cpu.registers.a << 7) & 0xFF;
+    cpu.registers.flags.c = carry_after_rotate;
+
+    cpu.registers.flags.z = cpu.registers.a == 0;
+    cpu.registers.flags.n = false;
+    cpu.registers.flags.h = false;
 }
