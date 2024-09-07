@@ -72,7 +72,7 @@ fn decode(opcode: u8, cpu: &mut CPU) {
         },
         0x17 => rla(cpu),
         0x18 => {
-            let offset = cpu.get_next_one_byte() as usize;
+            let offset = cpu.get_next_one_byte() as i8;
             jr(offset, cpu);
         },
         0x19 => add16(&mut cpu.registers.get_hl(), cpu.registers.get_de(), cpu),
@@ -92,6 +92,33 @@ fn decode(opcode: u8, cpu: &mut CPU) {
         0x1F => rra(cpu),
 
         // 0x2N instructions
+        0x20 => {
+            if !cpu.registers.flags.z {
+                let s8 = cpu.get_next_one_byte() as i8;
+                jr(s8, cpu);
+            }
+        },
+        0x21 => {
+            let d16 = cpu.get_next_two_bytes();
+            ld16(&mut cpu.registers.get_hl(), d16);
+        },
+        0x22 => {
+            let hl = cpu.registers.get_hl();
+            ld_to_memory(cpu.registers.a, hl as usize, cpu);
+            cpu.registers.set_hl(hl.wrapping_add(1));
+        },
+        0x23 => {
+            inc16(&mut cpu.registers.get_hl());
+        },
+        0x24 => inc8(&mut cpu.registers.h),
+        0x25 => dec8(&mut cpu.registers.h),
+        0x26 => {
+            let d8 = cpu.get_next_one_byte();
+            ld8(&mut cpu.registers.h, d8);
+        },
+        0x27 => {
+
+        }
         _ => todo!(), 
     }
 }

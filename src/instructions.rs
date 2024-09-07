@@ -163,8 +163,14 @@ pub fn jp(register: u16, cpu: &mut CPU) {
 }
 
 /// Jumps to address in 8-bit register relative to program counter
-pub fn jr(offset: usize, cpu: &mut CPU) {
-    let target_address = cpu.program_counter.wrapping_add(offset);
+pub fn jr(offset: i8, cpu: &mut CPU) {
+    let target_address;
+    if offset > 0 {
+        target_address = cpu.program_counter.wrapping_add(offset as usize);
+    }
+    else {
+        target_address = cpu.program_counter.wrapping_sub(offset as usize);
+    }
 
     if target_address >= cpu.work_ram.len() {
         panic!("Out of bounds jump: attempted to jump to address 0x{:04X}", target_address);
