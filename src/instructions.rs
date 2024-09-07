@@ -30,9 +30,7 @@ pub fn ld_to_memory(register: u8, address: usize, cpu: &mut CPU) {
 }
 
 pub fn inc8(register: &mut u8) { *register += 1; }
-pub fn inc16(register: &mut u16) { *register += 1; }
 pub fn dec8(register: &mut u8) { *register -= 1;}
-pub fn dec16(register: &mut u16) { *register -= 1; }
 
 /// push 16-bit register onto stack
 pub fn push(register: &mut u16, cpu: &mut CPU) {
@@ -260,4 +258,37 @@ pub fn rra(cpu: &mut CPU) {
     cpu.registers.flags.z = cpu.registers.a == 0;
     cpu.registers.flags.n = false;
     cpu.registers.flags.h = false;
+}
+
+pub fn daa(cpu: &mut CPU) {
+    let mut offset: u8 = 0;
+
+    let a_val = &mut cpu.registers.a;
+    let half_carry = cpu.registers.flags.h;
+    let carry = cpu.registers.flags.c;
+    let subtract = cpu.registers.flags.n;
+
+    if (!subtract && (*a_val & 0xF > 0x09)) || half_carry {
+        offset |= 0x06;
+    }
+
+    if (!subtract && (*a_val > 0x99)) || carry {
+        offset |= 0x60;
+        cpu.registers.flags.c = true;
+    } else {
+        cpu.registers.flags.c = false;
+    }
+
+    if !subtract {
+        *a_val = a_val.wrapping_add(offset);
+    }
+    else {
+        *a_val = a_val.wrapping_sub(offset);
+    }
+    cpu.registers.flags.z = *a_val == 0;
+    cpu.registers.flags.h = false;
+}
+
+pub fn cpl(cpu: &mut CPU) {
+    cpu.registers.a = !cpu.registers.a;
 }

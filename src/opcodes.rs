@@ -44,7 +44,7 @@ fn decode(opcode: u8, cpu: &mut CPU) {
             let value = cpu.work_ram[reg_bc as usize] as u8;
             ld8(reg_a, value);
         },
-        0x0B => dec16(&mut cpu.registers.get_bc()),
+        0x0B => cpu.registers.dec_bc(),
         0x0C => inc8(&mut cpu.registers.c),
         0x0D => dec8(&mut cpu.registers.c),
         
@@ -63,7 +63,7 @@ fn decode(opcode: u8, cpu: &mut CPU) {
             ld16(&mut cpu.registers.get_de(), value);
         },
         0x12 => ld_to_memory(cpu.registers.a, cpu.work_ram[cpu.registers.get_de() as usize] as usize, cpu),
-        0x13 => inc16(&mut cpu.registers.get_de()),
+        0x13 => cpu.registers.inc_de(),
         0x14 => inc8(&mut cpu.registers.d),
         0x15 => dec8(&mut cpu.registers.d),
         0x16 => {
@@ -82,7 +82,7 @@ fn decode(opcode: u8, cpu: &mut CPU) {
             let ram = cpu.work_ram;
             ld_from_memory(reg_a, reg_de, ram);
         },
-        0x1B => dec16(&mut cpu.registers.get_de()),
+        0x1B => cpu.registers.dec_de(),
         0x1C => inc8(&mut cpu.registers.e),
         0x1D => dec8(&mut cpu.registers.e),
         0x1E => {
@@ -96,6 +96,8 @@ fn decode(opcode: u8, cpu: &mut CPU) {
             if !cpu.registers.flags.z {
                 let s8 = cpu.get_next_one_byte() as i8;
                 jr(s8, cpu);
+            } else {
+                cpu.program_counter += 1;
             }
         },
         0x21 => {
@@ -105,20 +107,44 @@ fn decode(opcode: u8, cpu: &mut CPU) {
         0x22 => {
             let hl = cpu.registers.get_hl();
             ld_to_memory(cpu.registers.a, hl as usize, cpu);
-            cpu.registers.set_hl(hl.wrapping_add(1));
-        },
-        0x23 => {
-            inc16(&mut cpu.registers.get_hl());
-        },
+            cpu.registers.inc_hl();
+        }
+        0x23 => cpu.registers.inc_hl(),
         0x24 => inc8(&mut cpu.registers.h),
         0x25 => dec8(&mut cpu.registers.h),
         0x26 => {
             let d8 = cpu.get_next_one_byte();
             ld8(&mut cpu.registers.h, d8);
         },
-        0x27 => {
+        0x27 => daa(cpu),
+        0x28 => {
+            if cpu.registers.flags.z {
+                let s8 = cpu.get_next_one_byte() as i8;
+                jr(s8, cpu);
+            } else {
+                cpu.program_counter += 1;
+            }
+        },
+        0x29 => {
+            let mut hl = cpu.registers.get_hl();
+            hl = hl.wrapping_add(hl);
+            cpu.registers.set_hl(hl);
+        },
+        0x2A => {
+            let hl = cpu.registers.get_hl();
+            let a = &mut cpu.registers.a;
+            ld_from_memory(a, hl as usize, cpu.work_ram);
+            cpu.registers.set_hl(hl.wrapping_add(1));
+        },
+        0x2B => cpu.registers.dec_hl(),
+        0x2C => inc8(&mut cpu.registers.l),
+        0x2D => dec8(&mut cpu.registers.l),
+        0x2E => {
+            let d8 = cpu.get_next_one_byte();
+            ld8(&mut cpu.registers.l, d8);
+        },
+        0x2F => cpl(cpu),
 
-        }
         _ => todo!(), 
     }
 }
