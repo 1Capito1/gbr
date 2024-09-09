@@ -8,6 +8,13 @@ type Tile = [u8; 2];
 const TILE_DATA_START: u16 = 0x8000;
 const TILE_DATA_END: u16 = 0x97FF;
 
+/// Represents the state of the CPU
+pub enum CpuState {
+    STOP,
+    HALT,
+    CONTINUE,
+}
+
 pub struct CPU {
     pub work_ram: RAMArea,
     pub video_ram: RAMArea,
@@ -15,7 +22,7 @@ pub struct CPU {
     pub stack_ptr: usize,
     pub program_counter: usize,
     pub registers: registers::Registers,
-    pub do_stop: bool,
+    pub state: CpuState,
 }
 
 impl CPU {
